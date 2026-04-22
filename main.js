@@ -1,5 +1,9 @@
-// setup canvas
+// BOUNCY BALL SETTINGS
+const density = 1;
 
+
+
+// setup canvas
 const canvas = document.querySelector('canvas');
 const ctx = canvas.getContext('2d');
 // getContext('2d') enables use of 2d drawing graphic methods on the canvas
@@ -11,6 +15,10 @@ const height = canvas.height = window.innerHeight;
 function random(min, max) {
   const num = Math.floor(Math.random() * (max - min + 1)) + min;
   return num;
+}
+
+function findHypotenuse(x, y) {
+  return Math.sqrt(x * x + y * y)
 }
 
 function Ball(x, y, velX, velY, color, size) {
@@ -59,21 +67,50 @@ Ball.prototype.update = function() {
 }
 
 Ball.prototype.collisionDetect = function() {
+  // class method so this = checked ball
+
   // Loop through all the balls (in all these for loops you really can just use "for of" loops.. but this doc is old, right?)
   // We need to check if the
   for (let j = 0; j < balls.length; j++) {
     // If we are not iterating over the ball we want, (becus we don't want to check if a ball is colliding with itself)
-    if (!(this === balls[j])) {
+    const iteratedBall = balls[j]
+    if (!(this === iteratedBall)) {
       // Calculate using a distance check to see if they're close enough to be considered colliding
       // Woah, calculus :'). Average rate of change
-      const dx = this.x - balls[j].x;
-      const dy = this.y - balls[j].y;
+      const dx = this.x - iteratedBall.x;
+      const dy = this.y - iteratedBall.y;
       // Pythagorean Theorem
-      const distance = Math.sqrt(dx * dx + dy * dy);
+      const distance = findHypotenuse(dx, dy);
 
-      if (distance < this.size + balls[j].size) {
-        // Just change the color of the balls, for now...
-        balls[j].color = this.color = 'rgb(' + random(0, 255) + ',' + random(0, 255) + ',' + random(0, 255) +')';
+      if (distance < this.size + iteratedBall.size) {
+        // Balls bounce off each other when they collide
+        // Density equation: p = m/v --> m = pv, (okay i'm actually calculating area and not volume but just nevermind that alright)
+        const thisMass = 3 //((4/3) * Math.PI * this.size^3) * density;
+        const iteratedMass = 3 //((4/3) * Math.PI * iteratedBall.size^3) * density;
+        const thisVelInitial = findHypotenuse(this.velX, this.velY);
+        // These equations are derived from the conservation of momentum and energy equations (we are simulating elastic collisions)
+        const thisVelFinal = ((thisMass-iteratedMass)*thisVelInitial)/(thisMass+iteratedMass);
+        const iteratedVelFinal = (2*thisMass*thisVelInitial)/(thisMass + iteratedMass);
+        // Split into x and y components
+        // I would turn this into a function but somehow the code breaks when I try it
+        const thisInitialAngleFromHorizontal = Math.atan2((this.y - iteratedBall.y),(this.x - iteratedBall.x)) //Math.atan2(this.velY, this.velX)
+        console.log(thisInitialAngleFromHorizontal)
+        const thisFinalAngleFromHorizontal = (Math.PI) - thisInitialAngleFromHorizontal;
+        const thisVelFx = thisVelFinal * Math.cos(thisFinalAngleFromHorizontal);
+        const thisVelFy = thisVelFinal * Math.sin(thisFinalAngleFromHorizontal);
+
+        // Set ball to the new velocity
+        this.velX = thisVelFx;
+        this.velY = thisVelFy;
+
+        const iteratedInitialAngleFromHorizontal = Math.atan2((iteratedBall.y - this.y),(iteratedBall.x - this.x))
+        console.log(iteratedInitialAngleFromHorizontal)
+        const iteratedFinalAngleFromHorizontal = (Math.PI) - iteratedInitialAngleFromHorizontal;
+        const iteratedVelFx = iteratedVelFinal * Math.cos(iteratedFinalAngleFromHorizontal);
+        const iteratedVelFy = iteratedVelFinal * Math.sin(iteratedFinalAngleFromHorizontal);
+
+        iteratedBall.velX = iteratedVelFx;
+        iteratedBall.velY = iteratedVelFy;
       }
     }
   }
@@ -104,16 +141,16 @@ function loop() {
 
 let balls = [];
 
-while (balls.length < 25) {
+while (balls.length < 2) {
   // Create a new ball whenever there are less than 25 balls
-  let size = random(10,20);
+  let size = random(70,70);
   let ball = new Ball(
     // ball position always drawn at least one ball width
     // away from the edge of the canvas, to avoid drawing errors
     random(0 + size,width - size), // x
     random(0 + size,height - size), // y
-    random(-7,7), // velX
-    random(-7,7), // velY
+    random(0,5), // velX
+    random(0,5), // velY
     'rgb(' + random(0,255) + ',' + random(0,255) + ',' + random(0,255) +')', // color
     size //..size
   );
