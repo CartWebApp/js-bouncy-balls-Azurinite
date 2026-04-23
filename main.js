@@ -95,10 +95,17 @@ Ball.prototype.collisionDetect = function() {
       const dx = this.x - iteratedBall.x;
       const dy = this.y - iteratedBall.y;
       // Pythagorean Theorem
-      const distance = findHypotenuse(dx, dy);
+      let distance = findHypotenuse(dx, dy);
+      const limit = this.size + iteratedBall.size;
 
-      if (distance < this.size + iteratedBall.size) {
-        // Balls bounce off each other when they collide
+      // Now this is where the logic for balls bouncing off each other is
+      if (distance < limit) {
+        distance = limit;
+        /* ^ Act as if balls are colliding exactly on their perimeters
+        lessons some of the loss of speed and clipping behaviors;
+        remove this if you want to see some funny stuff */
+
+
         // Density equation: p = m/v --> m = pv, (This is just assuming theyre all spheres)
         // I actually just removed "p" since it doesn't really effect anything... so actually this mass is just volume. But don't tell anyone that, alright?
         const thisMass = ((4/3) * Math.PI * this.size**3); 
@@ -173,16 +180,16 @@ function loop() {
 
 let balls = [];
 
-while (balls.length < 25) {
+while (balls.length < 30) {
   // Create a new ball whenever there are less than 25 balls
-  let size = random(20,30);
+  let size = random(10,30);
   let ball = new Ball(
     // ball position always drawn at least one ball width
     // away from the edge of the canvas, to avoid drawing errors
     random(0 + size,width - size), // x
     random(0 + size,height - size), // y
-    random(-5,5), // velX
-    random(-5,5), // velY
+    random(-10,10), // velX
+    random(-10,10), // velY
     'rgb(' + random(0,255) + ',' + random(0,255) + ',' + random(0,255) +')', // color
     size //..size
   );
