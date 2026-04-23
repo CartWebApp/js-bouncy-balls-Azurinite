@@ -1,7 +1,22 @@
-// BOUNCY BALL SETTINGS
-const density = 1;
+// I spent way more time than I should've on this.
+/* Some personal reflection comments from me: 
+Why did I do this :') it was pretty fun though
 
+This was my attempt to make the balls collide off each other with real physics, including conservation of momentum and KE.
+This assumes all collisions are perfectly elastic, of course
 
+It works really well - the direction is accurate, and so are the final speeds accounting for transfer of momentum. 
+The only issue is that sometimes balls will stick into each other.
+I think this happens when the balls clip into each other too far for their new velocities to bounce them out.
+I already invested like 5 hours so I probably won't fix it, but...
+It's kind of fun to watch when it happens though, it's like a random event, and sometimes the clumps explode.
+
+I used the Socratic AI tutor method a LOT to help me.
+I have the full conversation saved and it's pretty interesting.
+I would recommend the method for any mathematical/physics calculations that are difficult to understand.
+I learnt how to compute dot notations given x and y components, calculate unit vectors/normals, and apply those in equations.
+
+*/
 
 // setup canvas
 const canvas = document.querySelector('canvas');
@@ -76,7 +91,7 @@ Ball.prototype.collisionDetect = function() {
     const iteratedBall = balls[j]
     if (!(this === iteratedBall)) {
       // Calculate using a distance check to see if they're close enough to be considered colliding
-      // Woah, calculus :'). Average rate of change
+      // Woah, calculus :'). Rate of change
       const dx = this.x - iteratedBall.x;
       const dy = this.y - iteratedBall.y;
       // Pythagorean Theorem
@@ -84,33 +99,50 @@ Ball.prototype.collisionDetect = function() {
 
       if (distance < this.size + iteratedBall.size) {
         // Balls bounce off each other when they collide
-        // Density equation: p = m/v --> m = pv, (okay i'm actually calculating area and not volume but just nevermind that alright)
-        const thisMass = 3 //((4/3) * Math.PI * this.size^3) * density;
-        const iteratedMass = 3 //((4/3) * Math.PI * iteratedBall.size^3) * density;
-        const thisVelInitial = findHypotenuse(this.velX, this.velY);
-        // These equations are derived from the conservation of momentum and energy equations (we are simulating elastic collisions)
-        const thisVelFinal = ((thisMass-iteratedMass)*thisVelInitial)/(thisMass+iteratedMass);
-        const iteratedVelFinal = (2*thisMass*thisVelInitial)/(thisMass + iteratedMass);
-        // Split into x and y components
-        // I would turn this into a function but somehow the code breaks when I try it
-        const thisInitialAngleFromHorizontal = Math.atan2((this.y - iteratedBall.y),(this.x - iteratedBall.x)) //Math.atan2(this.velY, this.velX)
-        console.log(thisInitialAngleFromHorizontal)
-        const thisFinalAngleFromHorizontal = (Math.PI) - thisInitialAngleFromHorizontal;
-        const thisVelFx = thisVelFinal * Math.cos(thisFinalAngleFromHorizontal);
-        const thisVelFy = thisVelFinal * Math.sin(thisFinalAngleFromHorizontal);
+        // Density equation: p = m/v --> m = pv, (This is just assuming theyre all spheres)
+        // I actually just removed "p" since it doesn't really effect anything... so actually this mass is just volume. But don't tell anyone that, alright?
+        const thisMass = ((4/3) * Math.PI * this.size**3); 
+        const iteratedMass = ((4/3) * Math.PI * iteratedBall.size**3);
 
+        // Find normalized center-to-center vectors
+        const nx = dx/distance
+        const ny = dy/distance
+        // Find dot product (measures how much the vectors point in the same direction)
+        const thisDotProduct = (this.velX*nx) + (this.velY*ny);
+        const iteratedDotProduct = (iteratedBall.velX*nx) + (iteratedBall.velY*ny);
+        // Now apply the vector to 1D equations
+        // These equations are derived from the conservation of momentum and energy equations (we are simulating elastic collisions)
+        const thisSpeedFinal = ((thisMass-iteratedMass)*thisDotProduct + (2*iteratedMass*iteratedDotProduct))/(thisMass+iteratedMass);
+        const iteratedSpeedFinal = ((thisMass-iteratedMass)*iteratedDotProduct + (2*thisMass*thisDotProduct))/(thisMass + iteratedMass);
+
+        // Now this is where the actual physics applications come in
+        // Split the discovered 1D scalar velocity back into x and y components
+        const thisVelFxNorm = nx * thisSpeedFinal;
+        const thisVelFyNorm = ny * thisSpeedFinal;
+
+        // original velocity = normal component + perpendicular component
+        // perpendicular = original - normal
+        const thisVelXPerp = this.velX - (nx*thisDotProduct);
+        const thisVelYPerp = this.velY - (ny*thisDotProduct);
+        const thisVelFx = thisVelFxNorm + thisVelXPerp;
+        const thisVelFy = thisVelFyNorm + thisVelYPerp;
         // Set ball to the new velocity
         this.velX = thisVelFx;
         this.velY = thisVelFy;
 
-        const iteratedInitialAngleFromHorizontal = Math.atan2((iteratedBall.y - this.y),(iteratedBall.x - this.x))
-        console.log(iteratedInitialAngleFromHorizontal)
-        const iteratedFinalAngleFromHorizontal = (Math.PI) - iteratedInitialAngleFromHorizontal;
-        const iteratedVelFx = iteratedVelFinal * Math.cos(iteratedFinalAngleFromHorizontal);
-        const iteratedVelFy = iteratedVelFinal * Math.sin(iteratedFinalAngleFromHorizontal);
 
+        // Repeated with iterated ball
+        const iteratedVelFxNorm = nx * iteratedSpeedFinal;
+        const iteratedVelFyNorm = ny * iteratedSpeedFinal;
+        const iteratedVelXPerp = iteratedBall.velX - (nx*iteratedDotProduct);
+        const iteratedVelYPerp = iteratedBall.velY - (ny*iteratedDotProduct);
+        const iteratedVelFx = iteratedVelFxNorm + iteratedVelXPerp;
+        const iteratedVelFy = iteratedVelFyNorm + iteratedVelYPerp;
         iteratedBall.velX = iteratedVelFx;
         iteratedBall.velY = iteratedVelFy;
+
+        this.draw();
+        iteratedBall.draw();
       }
     }
   }
@@ -141,16 +173,16 @@ function loop() {
 
 let balls = [];
 
-while (balls.length < 2) {
+while (balls.length < 25) {
   // Create a new ball whenever there are less than 25 balls
-  let size = random(70,70);
+  let size = random(20,30);
   let ball = new Ball(
     // ball position always drawn at least one ball width
     // away from the edge of the canvas, to avoid drawing errors
     random(0 + size,width - size), // x
     random(0 + size,height - size), // y
-    random(0,5), // velX
-    random(0,5), // velY
+    random(-5,5), // velX
+    random(-5,5), // velY
     'rgb(' + random(0,255) + ',' + random(0,255) + ',' + random(0,255) +')', // color
     size //..size
   );
